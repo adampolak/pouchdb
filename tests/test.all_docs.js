@@ -1,6 +1,7 @@
 /*globals initTestDB: false, emit: true, generateAdapterUrl: false */
 /*globals PERSIST_DATABASES: false, initDBPair: false, utils: true */
 /*globals ajax: true, LevelPouch: true, makeDocs: false */
+/*globals makeBlob: false */
 /*globals cleanupTestDatabases: false */
 
 "use strict";
@@ -254,6 +255,28 @@ adapters.map(function(adapter) {
         db.allDocs({startkey: 'z', endkey: 'z'}, function(err, result) {
           equal(result.rows.length, 1, 'Exclude a result');
           start();
+        });
+      });
+    });
+  });
+
+  asyncTest('Testing attachments', function() {
+    initTestDB(this.name, function(err, db) {
+      var doc = {
+        _id: "foo",
+        _attachments: {
+          "foo.txt": {
+            content_type: "text/plain",
+            data: "bar"
+          }
+        }
+      };
+      db.put({_id: "foo"}, function(err, res) {
+        db.putAttachment("foo/bar", res.rev, makeBlob("baz"), "text/plain", function(err, res) {
+          db.allDocs({include_docs: true, attachments: true}, function(err, res) {
+            ok(res.rows[0].doc._attachments["bar"].data, 'attachment data included');
+            start();
+          });
         });
       });
     });

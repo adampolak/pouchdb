@@ -410,7 +410,44 @@ var PouchAdapter = function(opts, callback) {
       }
     }
 
-    return customApi._allDocs(opts, callback);
+    if (opts.attachments) {
+      opts.include_docs = true;
+    }
+
+    return customApi._allDocs(opts, function(err, res) {
+      if (opts.attachments) {
+        if (err) {
+          call(callback, err);
+          return;
+        }
+        var count = 0;
+        res.rows.forEach(function(doc) {
+          console.log(doc);
+          count += Object.keys(doc.doc._attachments).length;
+        });
+        res.rows.forEach(function(doc) {
+          Object.keys(doc.doc._attachments).forEach(function(id) {
+            customApi.getAttachment(
+              {docId: doc.id, attachmentId: id},
+              function(err_att, data) {
+                console.log(err_att);
+                console.log(data);
+                if (!err_att) {
+                  doc.doc._attachments[id].data = data;
+                  // TODO: how to handle errors?
+                }
+                count--;
+                if (count === 0) {
+                  call(callback, err, res);
+                }
+              }
+            );
+          });
+        });
+      } else {
+        call(callback, err, res);
+      }
+    });
   };
 
   api.changes = function(opts) {
